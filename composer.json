@@ -1,0 +1,21 @@
+{
+    "require": {
+        "ext-json": "*",
+        "aws/aws-sdk-php": "^3.173",
+        "nesbot/carbon": "^2.45",
+        "vlucas/phpdotenv": "^5.3"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        },
+        "files": [
+            "app/functions.php"
+        ]
+    }
+}

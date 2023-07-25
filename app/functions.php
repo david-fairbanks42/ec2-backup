@@ -3,7 +3,6 @@
  * Global helper functions
  *
  * @copyright (c) 2018, Fairbanks Publishing
- * @license Proprietary
  */
 
 if(!function_exists('array_combine_safe')) {
@@ -16,15 +15,15 @@ if(!function_exists('array_combine_safe')) {
      *
      * @return array
      */
-    function array_combine_safe(array $keys = [], array $values = [], $default = null)
+    function array_combine_safe(array $keys = [], array $values = [], $default = null): array
     {
-        if(empty($keys)) {
+        if (empty($keys)) {
             return [];
         }
 
         $out = [];
 
-        foreach($keys as $index => $key) {
+        foreach ($keys as $index => $key) {
             $out[$key] = (isset($values[$index])) ? $values[$index] : $default;
         }
 
@@ -43,7 +42,7 @@ if(!function_exists('array_limit_keys')) {
      *
      * @return array
      */
-    function array_limit_keys(array $keys = [], array $input = [])
+    function array_limit_keys(array $keys = [], array $input = []): array
     {
         if(empty($keys)) {
             return [];
@@ -54,8 +53,8 @@ if(!function_exists('array_limit_keys')) {
         //}, ARRAY_FILTER_USE_KEY);
 
         $out = [];
-        foreach($keys as $key) {
-            if(array_key_exists($key, $input)) {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $input)) {
                 $out[$key] = $input[$key];
             }
         }
@@ -99,28 +98,22 @@ if(!function_exists('boolean')) {
      *
      * @return boolean
      */
-    function boolean($var)
+    function boolean(bool|int|string|null $var): bool
     {
-        if(is_bool($var)) {
+        if (is_bool($var)) {
             return ($var == true);
         }
 
-        if(is_string($var)) {
+        if (is_string($var)) {
             $var = strtolower($var);
 
-            switch($var) {
-                case 'true' :
-                case 'on' :
-                case 'yes' :
-                case 'y' :
-                case '1' :
-                    return true;
-                default :
-                    return false;
-            }
+            return match ($var) {
+                'true', 'on', 'yes', 'y', '1' => true,
+                default => false,
+            };
         }
 
-        if(is_numeric($var)) {
+        if (is_numeric($var)) {
             return ($var == 1);
         }
 
@@ -131,12 +124,12 @@ if(!function_exists('boolean')) {
 if(!function_exists('config')) {
     /**
      * @param string $key
-     * @param scalar $default
-     * @return scalar
+     * @param float|bool|int|string|null $default
+     * @return float|bool|int|string|null
      */
-    function config($key, $default = null)
+    function config(string $key, float|bool|int|string $default = null): float|bool|int|string|null
     {
-        if(array_key_exists($key, $_ENV)) {
+        if (array_key_exists($key, $_ENV)) {
             return $_ENV[$key];
         } else {
             return $default;
@@ -149,9 +142,9 @@ if(!function_exists('app_echo')) {
      * @param string $message
      * @param array $context
      */
-    function app_echo($message, $context = [])
+    function app_echo(string $message, array $context = []): void
     {
-        if(is_array($context) && !empty($context)) {
+        if (is_array($context) && !empty($context)) {
             $message .= ' ' . json_encode($context);
         }
 

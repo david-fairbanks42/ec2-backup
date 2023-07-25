@@ -1,9 +1,8 @@
 <?php
 /**
- * (file name)
+ * Ec2Backup.php
  *
- * @copyright (c) 2019, Fairbanks Publishing
- * @license Proprietary
+ * @copyright 2023 Fairbanks Publishing LLC
  */
 
 namespace App;
@@ -21,19 +20,19 @@ class Ec2Backup
     /**
      * @var Ec2Client
      */
-    private $ec2Client;
+    private Ec2Client $ec2Client;
 
     /**
      * @var boolean
      */
-    private $enable = true;
+    private bool $enable = true;
 
     /**
      * Number of completed backups to keep
      * This is the number BEFORE a backup is started
      * @var int
      */
-    private $maxBackupCount = 4;
+    private int $maxBackupCount = 4;
 
     public function __construct(Ec2Client $ec2Client) {
         $this->ec2Client = $ec2Client;
@@ -45,11 +44,11 @@ class Ec2Backup
             $this->maxBackupCount = 4;
     }
 
-    public function create(array $options=[])
+    public function create(array $options=[]): void
     {
         $options = array_merge(['noPrune' => false, 'force' => false], $options);
 
-        if($this->enable == false && $options['force'] != true) {
+        if (!$this->enable && !$options['force']) {
             app_echo('EC2 Backup is disabled in environment');
             return;
         }
@@ -69,7 +68,7 @@ class Ec2Backup
             return;
         }
 
-        if($machine['type'] != 'ec2') {
+        if ($machine['type'] != 'ec2') {
             app_echo('Instance type is wrong to do an EC2 backup', $machine);
             return;
         }
@@ -77,8 +76,8 @@ class Ec2Backup
         $volumes = $this->getVolumes($machine['instanceId']);
         $tags = $this->getTags($machine['instanceId']);
 
-        foreach($volumes as $volume) {
-            if($options['noPrune'] == true) {
+        foreach ($volumes as $volume) {
+            if ($options['noPrune']) {
                 $pruneWording = '(pruning disabled)';
             } else {
                 $pruneCount = $this->pruneBackups($volume['volumeId']);
@@ -86,11 +85,10 @@ class Ec2Backup
             }
 
             $name = (isset($tags['Name'])) ? $tags['Name'] : $machine['instanceId'];
-            if(count($volumes) > 1)
+            if (count($volumes) > 1)
                 $name .= " ({$volume['device']})";
 
-            $r = $this->backup(['volumeId' => $volume['volumeId'], 'name' => $name]);
-            if($r == true) {
+            if ($this->backup(['volumeId' => $volume['volumeId'], 'name' => $name])) {
                 app_echo("Successfully started snapshot for {$volume['volumeId']} {$pruneWording}");
             } else {
                 app_echo("Error starting snapshot for {$volume['volumeId']} {$pruneWording}");
@@ -98,7 +96,7 @@ class Ec2Backup
         }
     }
 
-    public function getVolumes($instanceId)
+    public function getVolumes($instanceId): array
     {
         try {
             $result = $this->ec2Client->describeVolumes(
@@ -118,7 +116,7 @@ class Ec2Backup
         }
 
         $volumes = [];
-        foreach($result['Volumes'] as $volume) {
+        foreach ($result['Volumes'] as $volume) {
             $volumes[$volume['VolumeId']] = [
                 'device' => $volume['Attachments'][0]['Device'],
                 'volumeId' => $volume['VolumeId']
@@ -128,7 +126,7 @@ class Ec2Backup
         return $volumes;
     }
 
-    public function getTags($instanceId)
+    public function getTags($instanceId): array
     {
         try {
             $result = $this->ec2Client->describeTags(
@@ -148,14 +146,14 @@ class Ec2Backup
         }
 
         $tags = [];
-        foreach($result['Tags'] as $tag) {
+        foreach ($result['Tags'] as $tag) {
             $tags[$tag['Key']] = $tag['Value'];
         }
 
         return $tags;
     }
 
-    public function getBackups($volumeId)
+    public function getBackups($volumeId): array
     {
         try {
             $result = $this->ec2Client->describeSnapshots(
@@ -175,19 +173,19 @@ class Ec2Backup
         }
 
         $snapshots = [];
-        foreach($result['Snapshots'] as $snapshot) {
-            if($snapshot['State'] != 'completed')
+        foreach ($result['Snapshots'] as $snapshot) {
+            if ($snapshot['State'] != 'completed')
                 continue;
 
             $snapshots[$snapshot['SnapshotId']] = [
-                'started'     => Dates::makeCarbon($snapshot['StartTime']),
+                'started' => Dates::makeCarbon($snapshot['StartTime']),
                 'description' => $snapshot['Description'],
-                'snapshotId'  => $snapshot['SnapshotId']
+                'snapshotId' => $snapshot['SnapshotId'],
             ];
         }
 
         uasort($snapshots, function($a, $b) {
-            if($a['started'] == $b['started']) {
+            if ($a['started'] == $b['started']) {
                 return 0;
             } else {
                 return $a['started'] > $b['started'] ? 1 : 0;
@@ -197,19 +195,21 @@ class Ec2Backup
         return $snapshots;
     }
 
-    public function pruneBackups($volumeId)
+    public function pruneBackups($volumeId): int
     {
         $backups = $this->getBackups($volumeId);
 
-        if(count($backups) <= $this->maxBackupCount)
+        if (count($backups) <= $this->maxBackupCount) {
             return 0;
+        }
 
         $prune = array_slice($backups, 0, count($backups) - $this->maxBackupCount);
-        if(empty($prune))
+        if(empty($prune)) {
             return 0;
+        }
 
         $count = 0;
-        foreach($prune as $snapshotId => $snapshot) {
+        foreach ($prune as $snapshotId => $snapshot) {
             try {
                 $this->ec2Client->deleteSnapshot(
                     [
@@ -228,9 +228,9 @@ class Ec2Backup
         return $count;
     }
 
-    public function backup(array $params)
+    public function backup(array $params): bool
     {
-        if(!isset($params['volumeId'])) {
+        if (!isset($params['volumeId'])) {
             app_echo('Volume ID is not set in backup parameters');
             return false;
         }
@@ -239,8 +239,8 @@ class Ec2Backup
 
         $tags = [['Key' => 'Name', 'Value' => $name]];
         $snapTags = json_decode(config('TAGS', '[]'), true);
-        if(is_array($snapTags) && !empty($snapTags)) {
-            foreach($snapTags as $key => $value) {
+        if (is_array($snapTags) && !empty($snapTags)) {
+            foreach ($snapTags as $key => $value) {
                 $tags[] = ['Key' => $key, 'Value' => $value];
             }
         }

@@ -1,10 +1,8 @@
 <?php
 /**
- * Date Helper
+ * Dates.php
  *
- * @package Fairbanks\Kizarian\Utilities
- * @copyright (c) 2018, Fairbanks Publishing
- * @license Proprietary
+ * @copyright 2023 Fairbanks Publishing LLC
  */
 
 namespace App;
@@ -26,19 +24,19 @@ class Dates {
      *
      * @return Carbon
      */
-    public static function makeCarbon($date, Carbon $default=null)
+    public static function makeCarbon(mixed $date, Carbon $default=null): Carbon
     {
-        if(is_object($date) && $date instanceof Carbon) {
+        if ($date instanceof Carbon) {
             return $date;
-        } elseif(is_object($date) && $date instanceof \DateTime) {
+        } elseif ($date instanceof \DateTime) {
             return Carbon::instance($date);
-        } elseif(is_object($date)) {
+        } elseif (is_object($date)) {
             return Carbon::parse($date->date, $date->timezone);
-        } elseif(is_array($date)) {
+        } elseif (is_array($date)) {
             return Carbon::parse($date['date'], $date['timezone']);
-        } elseif(is_numeric($date)) {
+        } elseif (is_numeric($date)) {
             return Carbon::createFromTimestamp($date);
-        } elseif(is_string($date)) {
+        } elseif (is_string($date)) {
             return Carbon::parse($date);
         }
 

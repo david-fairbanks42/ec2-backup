@@ -4,6 +4,10 @@ Stand-alone script designed to run via cron or systemd to back-up EC2 volumes on
 
 All volumes associated with the EC2 instance are backed up.
 
+This script does not freeze the volume or a database or wait for inactivity. It just creates snapshots. High traffic
+servers should not use this as their only means of backup since there is a chance the database could be mid-write
+during the snapshot start which will break the database.
+
 ## Usage
 After the required configuration settings are set up in the `.env` file, simply executing `php backup.php` will
 perform the backup. The script has additional options such as `--no-prune` to prevent the script from removing old
@@ -89,4 +93,5 @@ WantedBy=timers.target
 ```
 
 To activate the schedule, execute the command (noting the sudo use)
+
 `sudo systemctl start ec2-backup.timer`

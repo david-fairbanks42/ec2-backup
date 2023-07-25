@@ -1,9 +1,8 @@
 <?php
 /**
- * Machine Details for Logging
+ * MachineDetails.php
  *
- * @copyright (c) 2017, Fairbanks Publishing
- * @license Proprietary
+ * @copyright 2023 Fairbanks Publishing LLC
  */
 
 namespace App;
@@ -19,12 +18,12 @@ class MachineDetails
     /**
      * @var MachineDetails
      */
-    protected static $instance;
+    protected static MachineDetails $instance;
 
     /**
      * @var array
      */
-    protected static $details = [
+    protected static array $details = [
         'type'       => null,
         'id'         => null,
         'machineId'  => null,
@@ -36,14 +35,14 @@ class MachineDetails
 
     /**
      * PHP config setting for default_socket_timeout to reset to after doing file_get_contents()
-     * @var int
+     * @var int|null
      */
-    protected $socketTimeout = null;
+    protected ?int $socketTimeout = null;
 
     /**
      * @return MachineDetails
      */
-    public static function getInstance()
+    public static function getInstance(): MachineDetails
     {
         if (!isset(static::$instance)) {
             static::$instance = new static;
@@ -55,7 +54,7 @@ class MachineDetails
     /**
      * @return array
      */
-    public static function getDetails()
+    public static function getDetails(): array
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -66,7 +65,7 @@ class MachineDetails
     /**
      * @return string|null
      */
-    public static function id()
+    public static function id(): ?string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -77,7 +76,7 @@ class MachineDetails
     /**
      * @return string|null
      */
-    public static function machineId()
+    public static function machineId(): ?string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -88,7 +87,7 @@ class MachineDetails
     /**
      * @return string
      */
-    public static function fullMachineId()
+    public static function fullMachineId(): string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -105,7 +104,7 @@ class MachineDetails
     /**
      * @return string|null
      */
-    public static function region()
+    public static function region(): ?string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -116,19 +115,16 @@ class MachineDetails
     /**
      * @return string|null
      */
-    public static function publicIp()
+    public static function publicIp(): ?string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
 
         if(self::$details['publicIp'] === null) {
-            switch(self::$details['type']) {
-                case 'ec2' :
-                    self::$details['publicIp'] = self::getEc2PublicIp();
-                    break;
-                default :
-                    self::$details['publicIp'] = self::getLocalPublicIp();
-            }
+            self::$details['publicIp'] = match (self::$details['type']) {
+                'ec2' => self::getEc2PublicIp(),
+                default => self::getLocalPublicIp(),
+            };
         }
 
         return self::$details['privateIp'];
@@ -137,7 +133,7 @@ class MachineDetails
     /**
      * @return string|null
      */
-    public static function privateIp()
+    public static function privateIp(): ?string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -147,12 +143,12 @@ class MachineDetails
 
     /* Private methods */
 
-    private static function getLocalPublicIp()
+    private static function getLocalPublicIp(): string
     {
         return '127.0.0.1';
     }
 
-    private static function getEc2PublicIp()
+    private static function getEc2PublicIp(): false|string
     {
         if(self::$instance === null)
             self::$instance = self::getInstance();
@@ -186,7 +182,7 @@ class MachineDetails
      */
     private function __clone() {}
 
-    private function determineMachineType()
+    private function determineMachineType(): string
     {
         $this->shortenTimeout();
         $hostname = @file_get_contents('http://169.254.169.254/latest/meta-data/hostname');
@@ -199,7 +195,7 @@ class MachineDetails
         }
     }
 
-    private function getLocalData()
+    private function getLocalData(): array
     {
         return [
             'id'        => 'dev',
@@ -210,7 +206,7 @@ class MachineDetails
         ];
     }
 
-    private function getEc2Data()
+    private function getEc2Data(): array
     {
         /*
          * curl "http://169.254.169.254/latest/dynamic/instance-identity/document"
@@ -253,7 +249,7 @@ class MachineDetails
         return $out;
     }
 
-    private function shortenTimeout()
+    private function shortenTimeout(): void
     {
         if($this->socketTimeout === null) {
             $this->socketTimeout = ini_get('default_socket_timeout');
@@ -262,7 +258,7 @@ class MachineDetails
         ini_set('default_socket_timeout', 2);
     }
 
-    private function resetTimeout()
+    private function resetTimeout(): void
     {
         if($this->socketTimeout !== null) {
             ini_set('default_socket_timeout', $this->socketTimeout);

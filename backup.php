@@ -1,6 +1,6 @@
 <?php
 
-$arguments = getopt('fph', ['force', 'no-prune', 'help']);
+$arguments = getopt('fph', ['force', 'no-prune', 'dry-run', 'help']);
 if(isset($arguments['h']) || isset($arguments['help'])) {
     echo <<<hereDoc
 Create and rotate EBS snapshots on AWS for EC2 instances.
@@ -11,6 +11,7 @@ Usage:
 Options:
     -f, --force     Override the ENABLE environment variable
     -p, --no-prune  Prevent the removal of old snapshots
+    --dry-run       Do not actually create the snapshot
 
 hereDoc;
     exit;
@@ -18,7 +19,8 @@ hereDoc;
 
 $options = [
     'force' => isset($arguments['f']) || isset($arguments['force']),
-    'noPrune' => isset($arguments['p']) || isset($arguments['no-prune'])
+    'noPrune' => isset($arguments['p']) || isset($arguments['no-prune']),
+    'dryRun' => isset($arguments['dry-run']),
 ];
 
 require_once(__DIR__ . '/vendor/autoload.php');
@@ -31,7 +33,7 @@ $dotenv->required('AWS_REGION')->notEmpty();
 $dotenv->ifPresent('MAX_SNAPSHOT_COUNT')->isInteger();
 $dotenv->ifPresent('ENABLE')->isBoolean();
 
-$ec2Client = new \Aws\Ec2\Ec2Client([
+$ec2Client = new Aws\Ec2\Ec2Client([
     'credentials' => [
         'key' => config('AWS_KEY'),
         'secret' => config('AWS_SECRET')
@@ -39,6 +41,5 @@ $ec2Client = new \Aws\Ec2\Ec2Client([
     'region' => config('AWS_REGION'),
     'version' => config('AWS_VERSION', 'latest')
 ]);
-$ec2Backup = new \App\Ec2Backup($ec2Client);
-
+$ec2Backup = new App\Ec2Backup($ec2Client, $options);
 $ec2Backup->create();

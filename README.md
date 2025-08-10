@@ -11,7 +11,7 @@ during the snapshot start which will break the database.
 ## Usage
 After the required configuration settings are set up in the `.env` file, simply executing `php backup.php` will
 perform the backup. The script has additional options such as `--no-prune` to prevent the script from removing old
-snapshots. If the configuration setting `ENABLE` is set to `false` the script will no perform any actions. To override
+snapshots. If the configuration setting `ENABLE` is set to `false` the script will not perform any actions. To override
 the `ENABLE` setting, `--force` can be used. The script will also respond to `--help` to outline the usage.
 
 ## Setup

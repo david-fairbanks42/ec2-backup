@@ -2,8 +2,9 @@
     "require": {
         "php": "^8.2",
         "ext-json": "*",
-        "aws/aws-sdk-php": "^3.209",
-        "nesbot/carbon": "^2.68",
+        "aws/aws-sdk-php": "^3.308.0",
+        "guzzlehttp/guzzle": "^7.2",
+        "nesbot/carbon": "3.8.4.0",
         "vlucas/phpdotenv": "^5.5"
     },
     "config": {

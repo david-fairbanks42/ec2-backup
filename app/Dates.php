@@ -13,7 +13,6 @@ use Carbon\Carbon;
  * Class Dates
  *
  * @author David Fairbanks <david@makerdave.com>
- * @package Fairbanks\Kizarian\Utilities
  * @version 2.0
  */
 class Dates {

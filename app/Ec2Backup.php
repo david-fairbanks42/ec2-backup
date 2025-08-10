@@ -2,7 +2,7 @@
 /**
  * Ec2Backup.php
  *
- * @copyright 2023 Fairbanks Publishing LLC
+ * @copyright 2025 Fairbanks Publishing LLC
  */
 
 namespace App;
@@ -10,21 +10,19 @@ namespace App;
 use Aws\Ec2\Ec2Client;
 
 /**
- * Class Ec2Snapshot
+ * Class Ec2Backup
  *
  * @author David Fairbanks <david@makerdave.com>
- * @version 2.0
+ * @version 3.0
  */
 class Ec2Backup
 {
-    /**
-     * @var Ec2Client
-     */
     private Ec2Client $ec2Client;
-
-    /**
-     * @var boolean
-     */
+    private array $options = [
+        'noPrune' => false,
+        'force' => false,
+        'dryRun' => false,
+    ];
     private bool $enable = true;
 
     /**
@@ -34,21 +32,26 @@ class Ec2Backup
      */
     private int $maxBackupCount = 4;
 
-    public function __construct(Ec2Client $ec2Client) {
+    public function __construct(Ec2Client $ec2Client, array $options = [])
+    {
         $this->ec2Client = $ec2Client;
+        foreach ($this->options as $key => $default) {
+            if (array_key_exists($key, $options) && is_bool($options[$key])) {
+                $this->options[$key] = $options[$key];
+            }
+        }
 
         $this->enable = boolean(config('ENABLE', true));
 
-        $this->maxBackupCount = (int)config('MAX_SNAPSHOT_COUNT', 4);
-        if($this->maxBackupCount <= 0)
+        $this->maxBackupCount = (int) config('MAX_SNAPSHOT_COUNT', 4);
+        if ($this->maxBackupCount <= 0) {
             $this->maxBackupCount = 4;
+        }
     }
 
-    public function create(array $options=[]): void
+    public function create(): void
     {
-        $options = array_merge(['noPrune' => false, 'force' => false], $options);
-
-        if (!$this->enable && !$options['force']) {
+        if (! $this->enable && ! $this->options['force']) {
             app_echo('EC2 Backup is disabled in environment');
             return;
         }
@@ -63,30 +66,31 @@ class Ec2Backup
 
         try {
             $machine = MachineDetails::getDetails();
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             app_echo("Error getting machine details: {$e->getMessage()}");
             return;
         }
 
-        if ($machine['type'] != 'ec2') {
-            app_echo('Instance type is wrong to do an EC2 backup', $machine);
+        if ($machine->type != 'ec2') {
+            app_echo('Instance type is wrong to do an EC2 backup', (array) $machine);
             return;
         }
 
-        $volumes = $this->getVolumes($machine['instanceId']);
-        $tags = $this->getTags($machine['instanceId']);
+        $volumes = $this->getVolumes($machine->instanceId);
+        $tags = $this->getTags($machine->instanceId);
 
         foreach ($volumes as $volume) {
-            if ($options['noPrune']) {
+            if ($this->options['noPrune']) {
                 $pruneWording = '(pruning disabled)';
             } else {
                 $pruneCount = $this->pruneBackups($volume['volumeId']);
                 $pruneWording = "and pruned {$pruneCount} old snapshots";
             }
 
-            $name = (isset($tags['Name'])) ? $tags['Name'] : $machine['instanceId'];
-            if (count($volumes) > 1)
+            $name = (isset($tags['Name'])) ? $tags['Name'] : $machine->instanceId;
+            if (count($volumes) > 1) {
                 $name .= " ({$volume['device']})";
+            }
 
             if ($this->backup(['volumeId' => $volume['volumeId'], 'name' => $name])) {
                 app_echo("Successfully started snapshot for {$volume['volumeId']} {$pruneWording}");
@@ -101,16 +105,16 @@ class Ec2Backup
         try {
             $result = $this->ec2Client->describeVolumes(
                 [
-                    'DryRun'  => false,
+                    'DryRun' => false,
                     'Filters' => [
                         [
-                            'Name'   => 'attachment.instance-id',
+                            'Name' => 'attachment.instance-id',
                             'Values' => [$instanceId]
                         ]
                     ]
                 ]
             );
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             app_echo('Error getting volumes: ' . $e->getMessage());
             return [];
         }
@@ -131,16 +135,16 @@ class Ec2Backup
         try {
             $result = $this->ec2Client->describeTags(
                 [
-                    'DryRun'  => false,
+                    'DryRun' => false,
                     'Filters' => [
                         [
-                            'Name'   => 'resource-id',
+                            'Name' => 'resource-id',
                             'Values' => [$instanceId]
                         ]
                     ]
                 ]
             );
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             app_echo('Error getting instance tags: ' . $e->getMessage());
             return [];
         }
@@ -158,24 +162,25 @@ class Ec2Backup
         try {
             $result = $this->ec2Client->describeSnapshots(
                 [
-                    'DryRun'  => false,
+                    'DryRun' => false,
                     'Filters' => [
                         [
-                            'Name'   => 'volume-id',
+                            'Name' => 'volume-id',
                             'Values' => [$volumeId],
                         ]
                     ]
                 ]
             );
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             app_echo('Error getting current snapshots: ' . $e->getMessage());
             return [];
         }
 
         $snapshots = [];
         foreach ($result['Snapshots'] as $snapshot) {
-            if ($snapshot['State'] != 'completed')
+            if ($snapshot['State'] != 'completed') {
                 continue;
+            }
 
             $snapshots[$snapshot['SnapshotId']] = [
                 'started' => Dates::makeCarbon($snapshot['StartTime']),
@@ -184,7 +189,7 @@ class Ec2Backup
             ];
         }
 
-        uasort($snapshots, function($a, $b) {
+        uasort($snapshots, function ($a, $b) {
             if ($a['started'] == $b['started']) {
                 return 0;
             } else {
@@ -204,7 +209,7 @@ class Ec2Backup
         }
 
         $prune = array_slice($backups, 0, count($backups) - $this->maxBackupCount);
-        if(empty($prune)) {
+        if (empty($prune)) {
             return 0;
         }
 
@@ -213,11 +218,11 @@ class Ec2Backup
             try {
                 $this->ec2Client->deleteSnapshot(
                     [
-                        'DryRun'     => false,
+                        'DryRun' => $this->options['dryRun'],
                         'SnapshotId' => $snapshotId
                     ]
                 );
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 app_echo('Error pruning snapshot: ' . $e->getMessage());
                 continue;
             }
@@ -230,7 +235,7 @@ class Ec2Backup
 
     public function backup(array $params): bool
     {
-        if (!isset($params['volumeId'])) {
+        if (! isset($params['volumeId'])) {
             app_echo('Volume ID is not set in backup parameters');
             return false;
         }
@@ -239,7 +244,7 @@ class Ec2Backup
 
         $tags = [['Key' => 'Name', 'Value' => $name]];
         $snapTags = json_decode(config('TAGS', '[]'), true);
-        if (is_array($snapTags) && !empty($snapTags)) {
+        if (is_array($snapTags) && ! empty($snapTags)) {
             foreach ($snapTags as $key => $value) {
                 $tags[] = ['Key' => $key, 'Value' => $value];
             }
@@ -248,18 +253,18 @@ class Ec2Backup
         try {
             $this->ec2Client->createSnapshot(
                 [
-                    'Description'       => sprintf('%s Backup %s', $name, date('Y-m-d')),
-                    'DryRun'            => false,
+                    'Description' => sprintf('%s Backup %s', $name, date('Y-m-d')),
+                    'DryRun' => $this->options['dryRun'],
                     'TagSpecifications' => [
                         [
                             'ResourceType' => 'snapshot',
-                            'Tags'         => $tags
+                            'Tags' => $tags
                         ]
                     ],
-                    'VolumeId'          => $params['volumeId']
+                    'VolumeId' => $params['volumeId']
                 ]
             );
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             app_echo($e->getMessage());
             return false;
         }

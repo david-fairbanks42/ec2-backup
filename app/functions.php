@@ -5,64 +5,6 @@
  * @copyright (c) 2018, Fairbanks Publishing
  */
 
-if(!function_exists('array_combine_safe')) {
-    /**
-     * Same affect as array_combine but does not error if the two arrays are different lengths
-     *
-     * @param array $keys
-     * @param array $values
-     * @param null $default
-     *
-     * @return array
-     */
-    function array_combine_safe(array $keys = [], array $values = [], $default = null): array
-    {
-        if (empty($keys)) {
-            return [];
-        }
-
-        $out = [];
-
-        foreach ($keys as $index => $key) {
-            $out[$key] = (isset($values[$index])) ? $values[$index] : $default;
-        }
-
-        return $out;
-    }
-}
-
-if(!function_exists('array_limit_keys')) {
-    /**
-     * Filter input array to only have the keys provided
-     *
-     * Only ensures first level of supplied array
-     *
-     * @param array $keys
-     * @param array $input
-     *
-     * @return array
-     */
-    function array_limit_keys(array $keys = [], array $input = []): array
-    {
-        if(empty($keys)) {
-            return [];
-        }
-
-        //return array_filter($input, function($item) use ($keys) {
-        //    return in_array($item, $keys);
-        //}, ARRAY_FILTER_USE_KEY);
-
-        $out = [];
-        foreach ($keys as $key) {
-            if (array_key_exists($key, $input)) {
-                $out[$key] = $input[$key];
-            }
-        }
-
-        return $out;
-    }
-}
-
 if(!function_exists('boolean')) {
     /**
      * Convert value to boolean
